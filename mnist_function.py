@@ -252,22 +252,24 @@ def fit_and_test_models(model_list, X_train, Y_train, X_test, Y_test, y_column_n
     else:
         yt = Y_test[y_column_name]
         ya = Y_train[y_column_name]
-    
 
     scorelist = []
     for mod_name, model in model_list.items():
-        model_name = mod_name
-        if len(y_column_name) > 0:
-            model_name = y_column_name+"-"+model_name
+        try:
+            model_name = mod_name
+            if len(y_column_name) > 0:
+                model_name = y_column_name+"-"+model_name
 
-        if isinstance(model, LinearSVC):
-            if ya.nunique() <= 2:
-                continue
-        scores["Class"].append(y_column_name)
-        scores["Model"].append(mod_name)
-        md, score_l = fit_and_test_a_model(model,model_name, X_train, ya, X_test, yt, verbose=verbose, metrics=metrics, transformer=transformer) 
-        modeldic[model_name] = md
-        scorelist.append(score_l)
+            if isinstance(model, LinearSVC):
+                if ya.nunique() <= 2:
+                    continue
+            scores["Class"].append(y_column_name)
+            scores["Model"].append(mod_name)
+            md, score_l = fit_and_test_a_model(model,model_name, X_train, ya, X_test, yt, verbose=verbose, metrics=metrics, transformer=transformer) 
+            modeldic[model_name] = md
+            scorelist.append(score_l)
+        except Exception as ex:
+            print(mod_name, "FAILED : ", ex)
     
     for score_l in scorelist:
         for key, val in score_l.items():
@@ -278,7 +280,17 @@ def fit_and_test_models(model_list, X_train, Y_train, X_test, Y_test, y_column_n
 @ignore_warnings(category=ConvergenceWarning)
 def fit_and_test_a_model(model, model_name, X_train, y_train, X_test, y_test, verbose=0, metrics=0, transformer=None):
     t0 = time.time()
+    if verbose:
+        print(model_name, "X_train:", X_train.shape,"y_train:", y_train.shape, "X_test:", X_test.shape,"y_test:", y_test.shape)
 
+    if transformer is not None:
+        try:
+            X_train = transformer.fit_transform(X_train)
+            X_test = transformer.fit_transform(X_test)
+            if verbose:
+                print(model_name, "After transform : X_train:", X_train.shape,"y_train:", y_train.shape, "X_test:", X_test.shape,"y_test:", y_test.shape)
+        except:
+            pass
     model.fit(X_train, y_train)
     
     r2 = model.score(X_test, y_test)
